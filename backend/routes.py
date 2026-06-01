@@ -12,6 +12,14 @@ def create_api_blueprint(simulator: Simulator) -> Blueprint:
     def network_status():
         return jsonify(simulator.get_state())
 
+    @api.get("/api/status")
+    def api_status():
+        return jsonify(simulator.get_state())
+
+    @api.get("/api/metrics")
+    def api_metrics():
+        return jsonify(simulator.get_state()["metrics"])
+
     @api.post("/simulate/failure")
     def simulate_failure():
         payload = request.get_json(silent=True) or {}
@@ -32,6 +40,38 @@ def create_api_blueprint(simulator: Simulator) -> Blueprint:
             return jsonify({"error": "Invalid nodeId"}), 400
         return jsonify(simulator.get_state())
 
+    @api.post("/simulate/link-failure")
+    def simulate_link_failure():
+        payload = request.get_json(silent=True) or {}
+        source = payload.get("source")
+        target = payload.get("target")
+        if not source or not target:
+            return jsonify({"error": "source and target are required"}), 400
+        if not simulator.inject_link_failure(str(source), str(target)):
+            return jsonify({"error": "Invalid link"}), 400
+        return jsonify(simulator.get_state())
+
+    @api.post("/simulate/link-restore")
+    def simulate_link_restore():
+        payload = request.get_json(silent=True) or {}
+        source = payload.get("source")
+        target = payload.get("target")
+        if not source or not target:
+            return jsonify({"error": "source and target are required"}), 400
+        if not simulator.restore_link(str(source), str(target)):
+            return jsonify({"error": "Invalid link"}), 400
+        return jsonify(simulator.get_state())
+
+    @api.post("/api/simulate")
+    def api_simulate():
+        payload = request.get_json(silent=True) or {}
+        event = payload.get("event")
+        if not event:
+            return jsonify({"error": "event is required"}), 400
+        if not simulator.inject_event(str(event), payload):
+            return jsonify({"error": "Invalid event or target"}), 400
+        return jsonify(simulator.get_state())
+
     @api.post("/simulate/random")
     def set_random_failure():
         payload = request.get_json(silent=True) or {}
@@ -49,6 +89,11 @@ def create_api_blueprint(simulator: Simulator) -> Blueprint:
 
     @api.post("/reset")
     def reset():
+        simulator.reset()
+        return jsonify(simulator.get_state())
+
+    @api.post("/api/reset")
+    def api_reset():
         simulator.reset()
         return jsonify(simulator.get_state())
 
