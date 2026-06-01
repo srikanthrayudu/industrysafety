@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Node / frontend
+node_modules/
+dist/
+dist-ssr/
+*.tsbuildinfo
+frontend/test-results/
+frontend/playwright-report/
+
+# Env and logs
+.env
+.env.*
+*.log
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Local runtime artifacts
+backend/metrics.db
