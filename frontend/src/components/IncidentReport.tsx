@@ -8,13 +8,22 @@ function buildReport(state: NetworkState) {
   const latestLog = state.logs[state.logs.length - 1]
   return {
     generatedAt: new Date().toISOString(),
-    project: 'Industrial Communication Networks - Communication Reliability in Safety-Critical Industrial Systems',
+    project: state.project?.name ?? 'Smart Industrial Safety Monitoring and Emergency Response Simulator',
+    focus: state.project?.focus ?? 'Industrial Safety Engineering',
+    plant: state.plant,
     summary: {
       latestEvent: latestLog?.event ?? 'No event recorded',
+      riskLevel: state.risk?.level ?? 'GREEN',
+      plantSafetyScore: state.risk?.score ?? 100,
       safetyLevel: state.safety?.level ?? 'normal',
       activeRoute: state.routes.current.join(' -> ') || 'No active route',
       backupRouteActive: state.routes.backupActive,
     },
+    sensors: state.sensors,
+    hazards: state.hazards,
+    emergency: state.emergency,
+    communication: state.communication,
+    safetyMetrics: state.safetyMetrics,
     metrics: state.metrics,
     scenario: state.scenario,
     thresholds: state.thresholds,
@@ -41,7 +50,7 @@ export default function IncidentReport({ state }: IncidentReportProps) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-slate-100">Incident Summary Report</h3>
-          <p className="mt-1 text-xs text-slate-400">Exports current route, metrics, thresholds, alerts, and logs.</p>
+          <p className="mt-1 text-xs text-slate-400">Exports sensors, hazards, actions, communication, metrics, and logs.</p>
         </div>
         <button onClick={downloadReport} className="rounded bg-cyan-700 px-3 py-2 text-xs font-semibold text-white hover:bg-cyan-600">
           Export Report

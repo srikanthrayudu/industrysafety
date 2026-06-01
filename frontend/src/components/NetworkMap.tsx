@@ -16,6 +16,14 @@ type NetworkMapProps = {
 
 const toLinkKey = (source: string, target: string) => `${source}-${target}`
 
+const shortRoles: Record<string, string> = {
+  A: 'Sensors',
+  B: 'PLC',
+  C: 'SIS',
+  D: 'Backup',
+  E: 'SCADA',
+}
+
 export default function NetworkMap({ nodes, links, routes }: NetworkMapProps) {
   const routeKeys = new Set<string>()
   for (let index = 0; index < routes.current.length - 1; index += 1) {
@@ -35,8 +43,11 @@ export default function NetworkMap({ nodes, links, routes }: NetworkMapProps) {
 
   return (
     <div className="rounded-md border border-slate-700 bg-slate-800 p-4">
-      <div className="mb-2 text-sm text-slate-300">
-        Monitored Flow: {routes.monitoredFlow.from} to {routes.monitoredFlow.to}
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-300">
+        <span>Industrial Plant Control Network</span>
+        <span className="text-xs text-slate-500">
+          Sensor to SCADA: {routes.monitoredFlow.from} to {routes.monitoredFlow.to}
+        </span>
       </div>
       <svg width="100%" viewBox="0 0 580 300" className="h-[280px] w-full">
         {links.map((link) => {
@@ -72,7 +83,7 @@ export default function NetworkMap({ nodes, links, routes }: NetworkMapProps) {
                 {node.id}
               </text>
               <text x={point.x} y={point.y + 42} textAnchor="middle" fill="#94a3b8" fontSize={12}>
-                {node.role}
+                {shortRoles[node.id] ?? node.role}
               </text>
             </g>
           )

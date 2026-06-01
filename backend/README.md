@@ -1,24 +1,26 @@
-# Industrial Communication Reliability Monitoring System (Backend)
+# Smart Industrial Safety Monitoring Backend
 
-Flask API + Python simulation engine for an Industry 4.0 communication reliability demo.
+Flask API and Python simulation engine for a SCADA-inspired industrial safety dashboard. The backend simulates hazardous plant sensors, detects abnormal conditions, calculates GREEN to BLACK risk levels, triggers emergency response actions, and keeps communication reliability as a supporting safety layer.
 
 ## Run
 
 ```bash
 python -m venv .venv
-source .venv/bin/activate
+.venv\Scripts\activate
 pip install -r requirements.txt
 python app.py
 ```
 
 Server runs on `http://localhost:5000`.
 
-## Endpoints
+## Main Endpoints
 
 - `GET /network/status`
+- `POST /api/simulate` with events such as `chemical_leak`, `radiation_spike`, `methane_explosion`, `communication_loss_shutdown`
 - `POST /simulate/failure` body: `{ "nodeId": "B" }`
 - `POST /simulate/restore` body: `{ "nodeId": "B" }`
-- `POST /simulate/random` body: `{ "probability": 0.08 }`
+- `POST /simulate/link-failure` body: `{ "source": "B", "target": "C" }`
+- `POST /simulate/link-restore` body: `{ "source": "B", "target": "C" }`
 - `POST /reset`
 - `GET /metrics/history?limit=60`
 - `GET /alerts?limit=40`
@@ -26,8 +28,7 @@ Server runs on `http://localhost:5000`.
 
 ## Simulation Behavior
 
-- Simulates packet transfer each second.
-- Injects random failures based on configured probability.
-- Detects route switch from primary to backup path.
-- Updates reliability, delay, packet loss, active/failed node counters.
-- Produces alerts and event logs in memory.
+- Simulates temperature, pressure, toxic gas, radiation, methane, smoke, oxygen, and humidity sensors.
+- Calculates GREEN, YELLOW, ORANGE, RED, and BLACK risk states.
+- Converts communication packet loss into missed sensor readings and delayed alarm/shutdown delivery.
+- Tracks plant safety score, alarm delivery rate, ESD success rate, MTBF, MTTR, and incident logs.

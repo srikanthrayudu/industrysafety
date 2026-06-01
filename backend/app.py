@@ -1,4 +1,4 @@
-"""Flask app entrypoint for Industrial Communication Reliability Monitoring System."""
+"""Flask app entrypoint for the industrial safety monitoring simulator."""
 
 from __future__ import annotations
 

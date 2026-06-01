@@ -10,6 +10,10 @@ def test_get_status():
     assert "links" in payload
     assert "metrics" in payload
     assert "safety" in payload
+    assert "sensors" in payload
+    assert "risk" in payload
+    assert "emergency" in payload
+    assert "communication" in payload
     assert "thresholds" in payload
     assert all("protocol" in link for link in payload["links"])
 
@@ -69,3 +73,17 @@ def test_safety_status_reports_threshold_violations():
 
     assert payload["thresholds"]["maxDelayMs"] == 150.0
     assert payload["safety"]["level"] in {"normal", "degraded", "critical"}
+
+
+def test_api_simulate_industrial_hazard():
+    client = app.test_client()
+    client.post("/api/reset")
+
+    response = client.post("/api/simulate", json={"event": "methane_explosion"})
+    assert response.status_code == 200
+    payload = response.get_json()
+
+    assert payload["scenario"]["activeSafetyScenario"] == "methane_explosion"
+    assert payload["plant"]["name"] == "Underground Mining Operation"
+    assert payload["risk"]["level"] in {"YELLOW", "ORANGE", "RED", "BLACK"}
+    assert any(sensor["id"] == "methane" for sensor in payload["sensors"])

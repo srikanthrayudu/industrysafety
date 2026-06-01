@@ -13,6 +13,57 @@ type PageTab = 'home' | 'dashboard' | 'explain' | 'logs'
 
 function createEmptyState(): NetworkState {
   return {
+    project: {
+      name: 'Smart Industrial Safety Monitoring and Emergency Response Simulator',
+      focus: 'Industrial Safety Engineering',
+      communicationRole: 'Communication reliability is modeled as a safety support layer.',
+    },
+    plant: {
+      name: 'Integrated Hazardous Process Facility',
+      processArea: 'Multi-domain training simulator',
+      mode: 'Normal Operation',
+      activeScenario: 'Normal Operation',
+      description: 'Chemical, nuclear, mining, oil and gas, and hazardous manufacturing safety training.',
+    },
+    sensors: [],
+    hazards: [],
+    risk: {
+      level: 'GREEN',
+      label: 'Normal',
+      score: 100,
+      drivers: [],
+      hazardCount: 0,
+      shutdownRequired: false,
+      color: '#10b981',
+    },
+    emergency: {
+      actions: [],
+      shutdownActive: false,
+      lastShutdownStatus: 'standby',
+      responseMode: 'Automatic SIS response with operator visibility',
+    },
+    communication: {
+      safetyCommunicationReliability: 100,
+      alarmDeliverySuccessRate: 100,
+      emergencyShutdownSuccessRate: 100,
+      averageResponseDelayMs: 0,
+      missedSensorReadings: 0,
+      currentPath: [],
+      backupRouteActive: false,
+      alarmChannelSuppressed: false,
+    },
+    safetyMetrics: {
+      overallPlantSafetyScore: 100,
+      hazardDetectionAccuracy: 98.5,
+      alarmDeliveryRate: 100,
+      emergencyResponseTimeSec: 0.8,
+      emergencyShutdownSuccessRate: 100,
+      sensorAvailability: 100,
+      communicationReliability: 100,
+      meanTimeBetweenFailuresSec: 0,
+      meanTimeToRecoverySec: 0,
+    },
+    scenarioCatalog: [],
     nodes: [],
     links: [],
     metrics: {
@@ -21,7 +72,16 @@ function createEmptyState(): NetworkState {
       packetsLost: 0,
       packetLossPercent: 0,
       reliability: 100,
+      communicationReliability: 100,
+      safetyCommunicationReliability: 100,
       delayMs: 0,
+      alarmDeliverySuccessRate: 100,
+      emergencyShutdownSuccessRate: 100,
+      plantSafetyScore: 100,
+      sensorAvailability: 100,
+      hazardDetectionAccuracy: 98.5,
+      emergencyResponseTimeSec: 0.8,
+      activeHazards: 0,
       activeNodes: 0,
       failedNodes: 0,
     },
@@ -33,6 +93,10 @@ function createEmptyState(): NetworkState {
       alarmSuppressed: false,
       falseDataActive: false,
       dosActive: false,
+      activeSafetyScenario: null,
+      activeScenarioLabel: 'Normal Operation',
+      scenarioTicksRemaining: 0,
+      shutdownActive: false,
     },
     safety: {
       level: 'normal',
@@ -48,7 +112,7 @@ function createEmptyState(): NetworkState {
 }
 
 export default function App() {
-  const [page, setPage] = useState<PageTab>('home')
+  const [page, setPage] = useState<PageTab>('dashboard')
   const [state, setState] = useState<NetworkState>(createEmptyState())
   const [loading, setLoading] = useState(true)
 
@@ -79,12 +143,12 @@ export default function App() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-900 px-4 py-6 text-slate-100 sm:px-6">
+    <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-6">
       <div className="mx-auto max-w-7xl space-y-4">
-        <header className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-700 bg-slate-800 p-4">
+        <header className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-700 bg-slate-900 p-4">
           <div>
-            <h1 className="text-xl font-semibold">SCADA Monitoring Interface</h1>
-            <p className="text-xs text-slate-400">Fault Injection and Redundant Communication Path Simulation</p>
+            <h1 className="text-xl font-semibold">Smart Industrial Safety Monitoring and Emergency Response Simulator</h1>
+            <p className="text-xs text-slate-400">SCADA-inspired hazard detection, emergency response, and safety communication reliability</p>
           </div>
           <nav className="flex items-center gap-2">
             <button
@@ -107,13 +171,13 @@ export default function App() {
                 page === 'explain' ? 'bg-emerald-600' : 'bg-slate-700 hover:bg-slate-600'
               }`}
             >
-              Explain
+              Analytics
             </button>
             <button
               onClick={() => setPage('logs')}
               className={`rounded px-3 py-1.5 text-sm ${page === 'logs' ? 'bg-emerald-600' : 'bg-slate-700 hover:bg-slate-600'}`}
             >
-              Logs
+              Incident Logs
             </button>
           </nav>
         </header>

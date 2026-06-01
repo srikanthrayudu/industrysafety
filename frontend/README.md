@@ -1,6 +1,6 @@
-# Industrial Communication Reliability Monitoring System (Frontend)
+# Smart Industrial Safety Monitoring Frontend
 
-React + TypeScript dashboard for simulated industrial communication reliability.
+React + TypeScript dashboard for a web-based SCADA-style industrial safety and emergency response simulator.
 
 ## Run
 
@@ -9,21 +9,25 @@ npm install
 npm run dev -- --host
 ```
 
-Frontend runs on `http://localhost:5173` and calls backend via:
+Frontend runs on `http://localhost:5173` and calls the backend through:
 
 - `VITE_API_BASE` (default: `http://localhost:5000`)
 
 ## Views
 
-- Home page
-- Real-time Dashboard
-- Logs page
+- Dashboard
+- Home
+- Safety Analytics
+- Incident Logs
 
 ## Dashboard Features
 
-- Industrial node topology map
-- Node fault injection and restore controls
-- Reliability / packet loss / delay metrics
-- Backup route activation status
-- Alerts panel
-- Charts (line, bar, pie)
+- Plant overview
+- Safety sensor panel
+- Hazard detection panel
+- GREEN to BLACK risk meter
+- Emergency alerts and response actions
+- Safety communication health
+- Industrial control network map
+- Reliability and risk charts
+- Incident timeline and JSON report export

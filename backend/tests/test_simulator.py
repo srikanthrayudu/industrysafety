@@ -75,3 +75,30 @@ def test_state_includes_protocols_and_safety_thresholds():
     assert all("protocol" in link for link in state["links"])
     assert state["thresholds"]["minReliability"] == 99.0
     assert state["safety"]["level"] == "normal"
+
+
+def test_chemical_leak_creates_hazards_and_actions():
+    network = NetworkState()
+    simulator = Simulator(network, tick_interval=0.01)
+
+    assert simulator.inject_event("chemical_leak", {})
+    state = simulator.get_state()
+
+    assert state["project"]["name"] == "Smart Industrial Safety Monitoring and Emergency Response Simulator"
+    assert state["scenario"]["activeSafetyScenario"] == "chemical_leak"
+    assert any(sensor["id"] == "toxic_gas" for sensor in state["sensors"])
+    assert len(state["hazards"]) >= 1
+    assert state["risk"]["level"] in {"YELLOW", "ORANGE", "RED", "BLACK"}
+    assert len(state["emergency"]["actions"]) >= 1
+
+
+def test_communication_loss_shutdown_tracks_shutdown_failure():
+    network = NetworkState()
+    simulator = Simulator(network, tick_interval=0.01)
+
+    assert simulator.inject_event("communication_loss_shutdown", {})
+    state = simulator.get_state()
+
+    assert state["emergency"]["lastShutdownStatus"] == "failed"
+    assert state["metrics"]["esdFailures"] == 1
+    assert state["risk"]["level"] == "BLACK"

@@ -13,7 +13,7 @@ const levelStyles: Record<Alert['level'], string> = {
 export default function AlertPanel({ alerts }: AlertPanelProps) {
   return (
     <div className="rounded-md border border-slate-700 bg-slate-800 p-4">
-      <h3 className="text-sm font-semibold text-slate-100">Alerts</h3>
+      <h3 className="text-sm font-semibold text-slate-100">Emergency Alerts</h3>
       <div className="mt-3 max-h-52 space-y-2 overflow-y-auto">
         {alerts.length === 0 && <p className="text-sm text-slate-400">No active alerts</p>}
         {alerts

@@ -29,7 +29,7 @@ export default function ReliabilityChart({ history, metrics }: ReliabilityChartP
   return (
     <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
       <div className="rounded-md border border-slate-700 bg-slate-800 p-3 xl:col-span-2">
-        <h3 className="mb-2 text-sm font-semibold text-slate-100">Reliability Over Time</h3>
+        <h3 className="mb-2 text-sm font-semibold text-slate-100">Plant Safety and Communication Over Time</h3>
         <div className="h-52">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={history.slice(-30)}>
@@ -37,7 +37,9 @@ export default function ReliabilityChart({ history, metrics }: ReliabilityChartP
               <XAxis dataKey="time" tick={{ fill: '#94a3b8', fontSize: 11 }} />
               <YAxis domain={[0, 100]} tick={{ fill: '#94a3b8', fontSize: 11 }} unit="%" />
               <Tooltip />
-              <Line type="monotone" dataKey="reliability" stroke="#10b981" strokeWidth={2} dot={false} />
+              <Legend />
+              <Line type="monotone" dataKey="reliability" name="Communication %" stroke="#38bdf8" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="riskScore" name="Safety Score" stroke="#10b981" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -57,7 +59,7 @@ export default function ReliabilityChart({ history, metrics }: ReliabilityChartP
       </div>
 
       <div className="rounded-md border border-slate-700 bg-slate-800 p-3 xl:col-span-3">
-        <h3 className="mb-2 text-sm font-semibold text-slate-100">Packet Loss % and Delay</h3>
+        <h3 className="mb-2 text-sm font-semibold text-slate-100">Missed Readings and Response Delay</h3>
         <div className="h-52">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={history.slice(-30)}>
@@ -69,6 +71,7 @@ export default function ReliabilityChart({ history, metrics }: ReliabilityChartP
               <Legend />
               <Bar yAxisId="left" dataKey="packetLossPercent" name="Packet Loss %" fill="#f59e0b" />
               <Bar yAxisId="right" dataKey="delayMs" name="Delay (ms)" fill="#38bdf8" />
+              <Bar yAxisId="left" dataKey="activeHazards" name="Active Hazards" fill="#ef4444" />
             </BarChart>
           </ResponsiveContainer>
         </div>

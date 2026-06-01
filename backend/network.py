@@ -1,4 +1,4 @@
-"""Network topology model for the reliability monitoring simulator."""
+"""Industrial control network model for the safety simulator."""
 
 from dataclasses import dataclass
 import heapq
@@ -32,11 +32,11 @@ class Link:
 class NetworkState:
     def __init__(self) -> None:
         self.nodes: Dict[str, Node] = {
-            "A": Node(id="A", label="Temperature Sensor A", role="Sensor", reading=72.0, unit="C"),
-            "B": Node(id="B", label="PLC B", role="PLC"),
-            "C": Node(id="C", label="SIS Controller C", role="Controller"),
-            "D": Node(id="D", label="Backup Gateway D", role="Redundant Path"),
-            "E": Node(id="E", label="Control Room E", role="SCADA"),
+            "A": Node(id="A", label="Field Sensor Array A", role="Safety Sensors", reading=72.0, unit="C"),
+            "B": Node(id="B", label="PLC / RTU B", role="PLC"),
+            "C": Node(id="C", label="SIS Controller C", role="Safety Controller"),
+            "D": Node(id="D", label="Redundant Gateway D", role="Backup Communication"),
+            "E": Node(id="E", label="SCADA / Emergency Operations E", role="SCADA"),
         }
         self.links: List[Link] = [
             Link("A", "B", latency_ms=22, loss_rate=0.001, protocol="Modbus TCP"),
