@@ -1,19 +1,78 @@
-// React import not required with new JSX transform
-import { LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ResponsiveContainer } from 'recharts'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 
-export default function ReliabilityChart({ data }: { data: { time: string; reliability: number }[] }) {
+import type { HistoryEntry, Metrics } from '../types/simulator'
+
+type ReliabilityChartProps = {
+  history: HistoryEntry[]
+  metrics: Metrics
+}
+
+export default function ReliabilityChart({ history, metrics }: ReliabilityChartProps) {
+  const nodePieData = [
+    { name: 'Active Nodes', value: metrics.activeNodes, fill: '#10b981' },
+    { name: 'Failed Nodes', value: metrics.failedNodes, fill: '#ef4444' },
+  ]
+
   return (
-    <div style={{ width: '100%', height: 220 }}>
-      <ResponsiveContainer>
-        <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="time" hide={data.length > 8 ? true : false} />
-          <YAxis domain={[0, 100]} unit="%" />
-          <Tooltip />
-          <Line type="monotone" dataKey="reliability" stroke="#06b6d4" strokeWidth={2} dot={false} />
-        </LineChart>
-      </ResponsiveContainer>
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+      <div className="rounded-md border border-slate-700 bg-slate-800 p-3 xl:col-span-2">
+        <h3 className="mb-2 text-sm font-semibold text-slate-100">Reliability Over Time</h3>
+        <div className="h-52">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={history.slice(-30)}>
+              <CartesianGrid stroke="#334155" strokeDasharray="3 3" />
+              <XAxis dataKey="time" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+              <YAxis domain={[0, 100]} tick={{ fill: '#94a3b8', fontSize: 11 }} unit="%" />
+              <Tooltip />
+              <Line type="monotone" dataKey="reliability" stroke="#10b981" strokeWidth={2} dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="rounded-md border border-slate-700 bg-slate-800 p-3">
+        <h3 className="mb-2 text-sm font-semibold text-slate-100">Node Status</h3>
+        <div className="h-52">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={nodePieData} dataKey="value" nameKey="name" outerRadius={70} label />
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="rounded-md border border-slate-700 bg-slate-800 p-3 xl:col-span-3">
+        <h3 className="mb-2 text-sm font-semibold text-slate-100">Packet Loss % and Delay</h3>
+        <div className="h-52">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={history.slice(-30)}>
+              <CartesianGrid stroke="#334155" strokeDasharray="3 3" />
+              <XAxis dataKey="time" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+              <YAxis yAxisId="left" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+              <YAxis yAxisId="right" orientation="right" tick={{ fill: '#94a3b8', fontSize: 11 }} />
+              <Tooltip />
+              <Legend />
+              <Bar yAxisId="left" dataKey="packetLossPercent" name="Packet Loss %" fill="#f59e0b" />
+              <Bar yAxisId="right" dataKey="delayMs" name="Delay (ms)" fill="#38bdf8" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
     </div>
   )
 }
-

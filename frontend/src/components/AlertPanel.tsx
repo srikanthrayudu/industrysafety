@@ -1,19 +1,33 @@
-// React import not required with new JSX transform
+import type { Alert } from '../types/simulator'
 
-export default function AlertPanel({ alerts }: { alerts: { ts: string; msg: string }[] }) {
+type AlertPanelProps = {
+  alerts: Alert[]
+}
+
+const levelStyles: Record<Alert['level'], string> = {
+  warning: 'border-amber-500/30 bg-amber-500/10 text-amber-200',
+  critical: 'border-red-500/30 bg-red-500/10 text-red-200',
+  success: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200',
+}
+
+export default function AlertPanel({ alerts }: AlertPanelProps) {
   return (
-    <div style={{ maxHeight: 220, overflow: 'auto', padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }}>
-      <h3 style={{ margin: '4px 0 8px' }}>Alerts</h3>
-      {alerts.length === 0 && <div style={{ color: '#6B7280' }}>No alerts</div>}
-      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-        {alerts.map((a, i) => (
-          <li key={i} style={{ padding: '6px 4px', borderBottom: '1px solid #f3f4f6' }}>
-            <div style={{ fontSize: 13, color: '#111827' }}>{a.msg}</div>
-            <div style={{ fontSize: 11, color: '#6B7280' }}>{a.ts}</div>
-          </li>
-        ))}
-      </ul>
+    <div className="rounded-md border border-slate-700 bg-slate-800 p-4">
+      <h3 className="text-sm font-semibold text-slate-100">Alerts</h3>
+      <div className="mt-3 max-h-52 space-y-2 overflow-y-auto">
+        {alerts.length === 0 && <p className="text-sm text-slate-400">No active alerts</p>}
+        {alerts
+          .slice()
+          .reverse()
+          .map((alert, index) => (
+            <div key={`${alert.time}-${index}`} className={`rounded border px-3 py-2 text-sm ${levelStyles[alert.level]}`}>
+              <div className="flex items-start justify-between gap-3">
+                <span>{alert.message}</span>
+                <span className="text-xs opacity-80">{alert.time}</span>
+              </div>
+            </div>
+          ))}
+      </div>
     </div>
   )
 }
-

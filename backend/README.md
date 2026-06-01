@@ -1,43 +1,33 @@
-# Industrial Communication Reliability Simulator (backend)
+# Industrial Communication Reliability Monitoring System (Backend)
 
-This backend provides a minimal Flask API and a simple in-memory simulator for the Industrial Communication Reliability Monitoring project.
+Flask API + Python simulation engine for an Industry 4.0 communication reliability demo.
 
-Quick start (Python 3.8+):
-
-1. Create a venv and install dependencies:
+## Run
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-```
-
-2. Run the server:
-
-```bash
 python app.py
 ```
 
-The simulator runs in a background thread and exposes these endpoints:
+Server runs on `http://localhost:5000`.
 
-- `GET /network/status` - returns current nodes, links and metrics
-- `POST /simulate/failure` - body: `{ "nodeId": "B" }` to fail a node
-- `POST /simulate/restore` - body: `{ "nodeId": "B" }` to restore a node
-- `POST /reset` - resets network and clears metrics
-- `POST /simulate/random` - body: `{ "probability": 0.05 }` to set random fail probability
-Additional endpoints and features:
-- `GET /events` - Server-Sent Events stream of simulator state (JSON messages)
-- `GET /metrics/history?limit=N` - returns recent persisted metric snapshots (N default 200)
-- `POST /mqtt/publish` - body `{ "topic": "t", "message": {...} }` to publish a message to simulated MQTT broker
-- `GET /mqtt/messages?topic=<topic>&limit=N` - retrieve recent messages for a topic
-- `POST /mqtt/mode` - body `{ "enabled": true }` to enable/disable simulator MQTT publish mode (simulator will publish metrics to topic `sim/metrics` each tick when enabled)
+## Endpoints
 
-Persistence:
-- Metrics snapshots are stored in `metrics.db` (SQLite) under the backend directory. The simulator writes a snapshot each tick.
+- `GET /network/status`
+- `POST /simulate/failure` body: `{ "nodeId": "B" }`
+- `POST /simulate/restore` body: `{ "nodeId": "B" }`
+- `POST /simulate/random` body: `{ "probability": 0.08 }`
+- `POST /reset`
+- `GET /metrics/history?limit=60`
+- `GET /alerts?limit=40`
+- `GET /logs?limit=100`
 
-External MQTT broker (optional):
-- To publish metrics to a real MQTT broker, set the environment variable `MQTT_BROKER` to the broker host (e.g. `localhost`) and optionally `MQTT_BROKER_PORT` (default 1883). The simulator will attempt to connect on startup and publish metric payloads to topic `sim/metrics` when MQTT mode is enabled (`POST /mqtt/mode`).
+## Simulation Behavior
 
-
-The frontend can poll `/network/status` or call endpoints to inject faults.
-
+- Simulates packet transfer each second.
+- Injects random failures based on configured probability.
+- Detects route switch from primary to backup path.
+- Updates reliability, delay, packet loss, active/failed node counters.
+- Produces alerts and event logs in memory.

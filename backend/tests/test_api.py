@@ -1,56 +1,38 @@
-import json
-import time
-import pytest
-
-from app import app, sim
+from app import app
 
 
-@pytest.fixture(autouse=True)
-def start_sim():
-    # ensure simulator is running for tests that need it
-    sim.start()
-    yield
-    sim.stop()
+def test_get_status():
+    client = app.test_client()
+    response = client.get("/network/status")
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert "nodes" in payload
+    assert "links" in payload
+    assert "metrics" in payload
 
 
-def test_get_status(client=None):
-    c = app.test_client()
-    rv = c.get('/network/status')
-    assert rv.status_code == 200
-    data = rv.get_json()
-    assert 'nodes' in data and 'links' in data and 'metrics' in data
+def test_fail_restore_node():
+    client = app.test_client()
+
+    fail_response = client.post("/simulate/failure", json={"nodeId": "B"})
+    assert fail_response.status_code == 200
+    fail_payload = fail_response.get_json()
+    assert any(node["id"] == "B" and node["status"] == "failed" for node in fail_payload["nodes"])
+
+    restore_response = client.post("/simulate/restore", json={"nodeId": "B"})
+    assert restore_response.status_code == 200
+    restore_payload = restore_response.get_json()
+    assert any(node["id"] == "B" and node["status"] == "active" for node in restore_payload["nodes"])
 
 
-def test_inject_and_restore():
-    c = app.test_client()
-    rv = c.post('/simulate/failure', json={'nodeId': 'B'})
-    assert rv.status_code == 200
-    data = rv.get_json()
-    assert any(n['id'] == 'B' and n['status'] == 'failed' for n in data['nodes'])
+def test_random_probability_and_logs():
+    client = app.test_client()
 
-    rv2 = c.post('/simulate/restore', json={'nodeId': 'B'})
-    assert rv2.status_code == 200
-    data2 = rv2.get_json()
-    assert any(n['id'] == 'B' and n['status'] == 'active' for n in data2['nodes'])
+    random_response = client.post("/simulate/random", json={"probability": 0.2})
+    assert random_response.status_code == 200
+    assert random_response.get_json()["probability"] == 0.2
 
-
-def test_metrics_history_and_mqtt_endpoints():
-    c = app.test_client()
-    # set mqtt mode on
-    rv = c.post('/mqtt/mode', json={'enabled': True})
-    assert rv.status_code == 200
-    # publish a message
-    rv2 = c.post('/mqtt/publish', json={'topic': 'test/topic', 'message': {'x': 1}})
-    assert rv2.status_code == 200
-    rv3 = c.get('/mqtt/messages?topic=test/topic&limit=10')
-    assert rv3.status_code == 200
-    data = rv3.get_json()
-    assert data['topic'] == 'test/topic'
-
-    # metrics history
-    time.sleep(0.1)
-    rv4 = c.get('/metrics/history?limit=5')
-    assert rv4.status_code == 200
-    hist = rv4.get_json()['history']
-    assert isinstance(hist, list)
-
+    logs_response = client.get("/logs?limit=10")
+    assert logs_response.status_code == 200
+    logs = logs_response.get_json()["logs"]
+    assert isinstance(logs, list)

@@ -1,42 +1,34 @@
-import pytest
-from network_model import NetworkState
+from network import NetworkState
 from simulator import Simulator
 
 
 def test_fail_restore_reset():
-    net = NetworkState()
-    sim = Simulator(net, tick_interval=0.01)
+    network = NetworkState()
+    simulator = Simulator(network, tick_interval=0.01)
 
-    # initial connectivity A->C should be True
-    assert net.is_connected('A', 'C')
+    assert network.is_connected("A", "E")
 
-    # fail node B and ensure links deactivated
-    assert net.fail_node('B')
-    assert net.nodes['B'].status == 'failed'
-    for l in net.links:
-        if l.source == 'B' or l.target == 'B':
-            assert not l.active
+    assert network.fail_node("B")
+    assert network.nodes["B"].status == "failed"
+    assert network.is_connected("A", "E")
 
-    # restore B
-    assert net.restore_node('B')
-    assert net.nodes['B'].status == 'active'
-    for l in net.links:
-        if l.source == 'B' or l.target == 'B':
-            assert l.active
+    assert network.restore_node("B")
+    assert network.nodes["B"].status == "active"
+    assert network.is_connected("A", "E")
 
-    # reset
-    net.fail_node('A')
-    sim.reset()
-    for n in net.nodes.values():
-        assert n.status == 'active'
+    network.fail_node("D")
+    simulator.reset()
+    assert all(node.status == "active" for node in network.nodes.values())
+    assert simulator.metrics["packetsSent"] == 0
 
 
-def test_simulator_metrics():
-    net = NetworkState()
-    sim = Simulator(net, tick_interval=0.01)
-    # run a few steps
-    sim.step()
-    sim.step()
-    assert sim.metrics['packetsSent'] >= 2
-    assert 'reliability' in sim.metrics
+def test_step_updates_metrics():
+    network = NetworkState()
+    simulator = Simulator(network, tick_interval=0.01)
 
+    simulator.step()
+    simulator.step()
+
+    assert simulator.metrics["packetsSent"] > 0
+    assert "reliability" in simulator.metrics
+    assert len(simulator.get_history()) >= 1

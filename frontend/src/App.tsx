@@ -1,193 +1,116 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import axios from 'axios'
-import NetworkMap from './components/NetworkMap'
-import ReliabilityChart from './components/ReliabilityChart'
-import AlertPanel from './components/AlertPanel'
-import MQTTPanel from './components/MQTTPanel'
 
-type N = { id: string; label: string; status: string }
-type L = { source: string; target: string; active: boolean }
-type RoutesType = Record<string, { primary?: string[]; current?: string[]; rerouted?: boolean }>
+import Dashboard from './pages/Dashboard'
+import Home from './pages/Home'
+import Logs from './pages/Logs'
+import type { NetworkState } from './types/simulator'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000'
 
-function App() {
-  const [nodes, setNodes] = useState<N[]>([])
-  const [links, setLinks] = useState<L[]>([])
-  const [metrics, setMetrics] = useState<{ packetsSent: number; packetsLost: number; reliability: number } | null>(null)
-  const [alerts, setAlerts] = useState<{ ts: string; msg: string }[]>([])
-  const [routes, setRoutes] = useState<RoutesType | undefined>(undefined)
-  const [chartData, setChartData] = useState<{ time: string; reliability: number }[]>([])
-  const lastNodesRef = useRef<Record<string, string>>({})
-  type MQTTMsg = { ts: number; topic: string; message: unknown }
-  const [mqttMsgs, setMQTTMsgs] = useState<MQTTMsg[]>([])
-  const [subscribedTopics, setSubscribedTopics] = useState<string[]>(['sim/metrics'])
-  const [newTopic, setNewTopic] = useState('')
+type PageTab = 'home' | 'dashboard' | 'logs'
 
-  // Replace polling with SSE subscription
+function createEmptyState(): NetworkState {
+  return {
+    nodes: [],
+    links: [],
+    metrics: {
+      packetsSent: 0,
+      packetsReceived: 0,
+      packetsLost: 0,
+      packetLossPercent: 0,
+      reliability: 100,
+      delayMs: 0,
+      activeNodes: 0,
+      failedNodes: 0,
+    },
+    routes: { monitoredFlow: { from: 'A', to: 'E' }, primary: [], current: [], backupActive: false },
+    alerts: [],
+    logs: [],
+    history: [],
+  }
+}
+
+export default function App() {
+  const [page, setPage] = useState<PageTab>('home')
+  const [state, setState] = useState<NetworkState>(createEmptyState())
+  const [loading, setLoading] = useState(true)
+
+  const fetchStatus = async () => {
+    const response = await axios.get<NetworkState>(`${API_BASE}/network/status`)
+    setState(response.data)
+  }
+
   useEffect(() => {
-    const es = new EventSource(`${API_BASE}/events`)
-    // listen for named events: 'state' and 'mqtt'
-    es.addEventListener('state', (ev: MessageEvent) => {
+    let timerId: number
+    const run = async () => {
       try {
-        const raw = (ev as MessageEvent).data as string
-        const data = JSON.parse(raw)
-        const prevNodes = lastNodesRef.current
-        setNodes(data.nodes)
-        setLinks(data.links)
-        setMetrics(data.metrics)
-        setRoutes(data.routes)
-
-        // update chart
-        const now = new Date().toLocaleTimeString()
-        const point = { time: now, reliability: Math.round((data.metrics.reliability + Number.EPSILON) * 100) / 100 }
-        setChartData((c) => [...c.slice(-49), point])
-
-        // alerts for node status change
-        const newAlerts: { ts: string; msg: string }[] = []
-        for (const n of data.nodes) {
-          const prev = prevNodes[n.id]
-          if (prev && prev !== n.status) {
-            newAlerts.push({ ts: now, msg: `Node ${n.id} (${n.label}) is now ${n.status}` })
-          }
-        }
-        if (newAlerts.length) setAlerts((s) => [...newAlerts, ...s].slice(0, 200))
-        // update lastNodesRef
-        const nodeMap: Record<string, string> = {}
-        for (const n of data.nodes) {
-          nodeMap[n.id] = n.status
-        }
-        lastNodesRef.current = nodeMap
-      } catch (err) {
-        console.error('SSE parse error', err)
+        await fetchStatus()
+      } catch (error) {
+        console.error(error)
+      } finally {
+        setLoading(false)
       }
-    })
-    es.addEventListener('mqtt', (ev: MessageEvent) => {
-      try {
-        const raw = (ev as MessageEvent).data as string
-        const m = JSON.parse(raw) as MQTTMsg
-        setMQTTMsgs((prev) => [...prev.slice(-199), m])
-      } catch {
-        // ignore parse errors
-      }
-    })
-    es.onerror = (e) => {
-      console.warn('SSE connection error', e)
-      es.close()
-      // fallback: try reconnect after a short delay
-      setTimeout(() => {
-        // reinstantiate by rerunning effect
-        window.location.reload()
-      }, 3000)
+      timerId = window.setTimeout(run, 1000)
     }
-    return () => es.close()
+    run()
+    return () => window.clearTimeout(timerId)
   }, [])
 
-  async function failNode(nodeId: string) {
-    try {
-      await axios.post(`${API_BASE}/simulate/failure`, { nodeId })
-      // SSE will update state
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  async function restoreNode(nodeId: string) {
-    try {
-      await axios.post(`${API_BASE}/simulate/restore`, { nodeId })
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  async function resetNetwork() {
-    try {
-      await axios.post(`${API_BASE}/reset`)
-      setChartData([])
-      setAlerts([])
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  async function subscribeTopic(topic: string) {
-    try {
-      await fetch(`${API_BASE}/mqtt/subscribe`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic }) })
-      setSubscribedTopics((s) => (s.includes(topic) ? s : [...s, topic]))
-    } catch (e) {
-      console.error(e)
-    }
-  }
-
-  async function unsubscribeTopic(topic: string) {
-    try {
-      await fetch(`${API_BASE}/mqtt/unsubscribe`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic }) })
-      setSubscribedTopics((s) => s.filter((t) => t !== topic))
-    } catch (e) {
-      console.error(e)
-    }
+  const postAction = async (endpoint: string, payload?: object) => {
+    await axios.post(`${API_BASE}${endpoint}`, payload)
+    await fetchStatus()
   }
 
   return (
-    <div className="p-6 min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100">
-      <div className="max-w-6xl mx-auto">
-        <header className="mb-6">
-          <h1 className="text-2xl font-semibold">Industrial Network Reliability Simulator</h1>
+    <main className="min-h-screen bg-slate-900 px-4 py-6 text-slate-100 sm:px-6">
+      <div className="mx-auto max-w-7xl space-y-4">
+        <header className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-slate-700 bg-slate-800 p-4">
+          <div>
+            <h1 className="text-xl font-semibold">SCADA Monitoring Interface</h1>
+            <p className="text-xs text-slate-400">Fault Injection and Redundant Communication Path Simulation</p>
+          </div>
+          <nav className="flex items-center gap-2">
+            <button
+              onClick={() => setPage('home')}
+              className={`rounded px-3 py-1.5 text-sm ${page === 'home' ? 'bg-emerald-600' : 'bg-slate-700 hover:bg-slate-600'}`}
+            >
+              Home
+            </button>
+            <button
+              onClick={() => setPage('dashboard')}
+              className={`rounded px-3 py-1.5 text-sm ${
+                page === 'dashboard' ? 'bg-emerald-600' : 'bg-slate-700 hover:bg-slate-600'
+              }`}
+            >
+              Dashboard
+            </button>
+            <button
+              onClick={() => setPage('logs')}
+              className={`rounded px-3 py-1.5 text-sm ${page === 'logs' ? 'bg-emerald-600' : 'bg-slate-700 hover:bg-slate-600'}`}
+            >
+              Logs
+            </button>
+          </nav>
         </header>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="col-span-1">
-            <NetworkMap nodes={nodes} links={links} routes={routes} />
-          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-            <div className="flex flex-wrap gap-2 mt-3">
-              {nodes.map((n) => (
-                n.status === 'active' ? (
-                  <button key={n.id} onClick={() => failNode(n.id)} className="px-3 py-1 rounded bg-red-500 text-white text-sm">
-                    Fail {n.id}
-                  </button>
-                ) : (
-                  <button key={n.id} onClick={() => restoreNode(n.id)} className="px-3 py-1 rounded bg-green-600 text-white text-sm">
-                    Restore {n.id}
-                  </button>
-                )
-              ))}
-              <button onClick={resetNetwork} className="px-3 py-1 rounded bg-gray-600 text-white text-sm">Reset</button>
-            </div>
-          </div>
-          </div>
-          <div className="col-span-2 space-y-4">
-            <div className="bg-white dark:bg-slate-800 p-4 rounded shadow">
-              <h2 className="font-medium mb-2">Metrics</h2>
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>Packets sent: <span className="font-semibold">{metrics?.packetsSent ?? '-'}</span></div>
-                <div>Packets lost: <span className="font-semibold">{metrics?.packetsLost ?? '-'}</span></div>
-                <div>Reliability: <span className="font-semibold">{metrics ? `${metrics.reliability.toFixed(2)}%` : '-'}</span></div>
-              </div>
-            </div>
 
-            <div className="bg-white dark:bg-slate-800 p-4 rounded shadow">
-              <ReliabilityChart data={chartData} />
-            </div>
+        {loading ? (
+          <section className="rounded-md border border-slate-700 bg-slate-800 p-6 text-sm text-slate-300">
+            Loading simulation status...
+          </section>
+        ) : null}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-white dark:bg-slate-800 p-4 rounded shadow">
-                <AlertPanel alerts={alerts} />
-              </div>
-                      <div className="bg-white dark:bg-slate-800 p-4 rounded shadow">
-                        <div className="mb-3 flex gap-2">
-                          <input value={newTopic} onChange={(e) => setNewTopic(e.target.value)} placeholder="topic (e.g. sim/metrics)" className="flex-1 border rounded px-2 py-1" />
-                          <button onClick={() => { if (newTopic.trim()) { subscribeTopic(newTopic.trim()); setNewTopic('') } }} className="px-3 py-1 rounded bg-blue-600 text-white">Subscribe</button>
-                        </div>
-                        <div className="mb-2 text-sm">Subscribed topics: {subscribedTopics.map(t => (
-                          <button key={t} onClick={() => unsubscribeTopic(t)} className="ml-2 px-2 py-1 text-xs rounded bg-gray-200 dark:bg-slate-700">{t} ×</button>
-                        ))}</div>
-                        <MQTTPanel msgs={mqttMsgs.filter(m => subscribedTopics.includes(m.topic))} />
-                      </div>
-            </div>
-          </div>
-        </div>
+        {!loading && page === 'home' ? <Home onStart={() => setPage('dashboard')} /> : null}
+        {!loading && page === 'dashboard' ? (
+          <Dashboard
+            state={state}
+            onFail={(nodeId) => postAction('/simulate/failure', { nodeId })}
+            onRestore={(nodeId) => postAction('/simulate/restore', { nodeId })}
+            onReset={() => postAction('/reset')}
+          />
+        ) : null}
+        {!loading && page === 'logs' ? <Logs logs={state.logs} /> : null}
       </div>
-    </div>
+    </main>
   )
 }
-
-export default App

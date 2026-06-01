@@ -1,74 +1,98 @@
-// React import not required with new JSX transform
-
-type Node = { id: string; label: string; status: string }
-type Link = { source: string; target: string; active: boolean }
+import type { NetworkLink, NetworkNode, RouteInfo } from '../types/simulator'
 
 const positions: Record<string, { x: number; y: number }> = {
-  A: { x: 80, y: 80 },
-  B: { x: 240, y: 80 },
-  C: { x: 240, y: 220 },
-  D: { x: 80, y: 220 },
+  A: { x: 80, y: 120 },
+  B: { x: 220, y: 70 },
+  C: { x: 360, y: 120 },
+  D: { x: 220, y: 210 },
+  E: { x: 500, y: 120 },
 }
 
-type RoutesType = Record<string, { primary?: string[]; current?: string[]; rerouted?: boolean }>
+type NetworkMapProps = {
+  nodes: NetworkNode[]
+  links: NetworkLink[]
+  routes: RouteInfo
+}
 
-export default function NetworkMap({ nodes, links, routes }: { nodes: Node[]; links: Link[]; routes?: RoutesType }) {
-  // build a set of link keys that are in primary and current paths
-  const primaryLinks = new Set<string>()
-  const currentLinks = new Set<string>()
-  if (routes) {
-    for (const key of Object.keys(routes)) {
-      const r = routes[key]
-      const p = r.primary || []
-      const c = r.current || []
-      for (let i = 0; i < p.length - 1; i++) primaryLinks.add(`${p[i]}-${p[i + 1]}`)
-      for (let i = 0; i < c.length - 1; i++) currentLinks.add(`${c[i]}-${c[i + 1]}`)
-      for (let i = 0; i < p.length - 1; i++) primaryLinks.add(`${p[i + 1]}-${p[i]}`)
-      for (let i = 0; i < c.length - 1; i++) currentLinks.add(`${c[i + 1]}-${c[i]}`)
-    }
+const toLinkKey = (source: string, target: string) => `${source}-${target}`
+
+export default function NetworkMap({ nodes, links, routes }: NetworkMapProps) {
+  const routeKeys = new Set<string>()
+  for (let index = 0; index < routes.current.length - 1; index += 1) {
+    const start = routes.current[index]
+    const end = routes.current[index + 1]
+    routeKeys.add(toLinkKey(start, end))
+    routeKeys.add(toLinkKey(end, start))
+  }
+
+  const primaryKeys = new Set<string>()
+  for (let index = 0; index < routes.primary.length - 1; index += 1) {
+    const start = routes.primary[index]
+    const end = routes.primary[index + 1]
+    primaryKeys.add(toLinkKey(start, end))
+    primaryKeys.add(toLinkKey(end, start))
   }
 
   return (
-    <svg width={360} height={320} className="network-map" style={{ border: '1px solid #e5e7eb', borderRadius: 8 }}>
-      {/* links */}
-      {links.map((l, i) => {
-        const s = positions[l.source]
-        const t = positions[l.target]
-        const key = `${l.source}-${l.target}`
-        const keyRev = `${l.target}-${l.source}`
-        let stroke = l.active ? '#111827' : '#9CA3AF'
-        let width = 3
-        // highlight if link is in current path
-        if (currentLinks.has(key) || currentLinks.has(keyRev)) {
-          // if it's also in primary -> thick green; else -> orange for backup
-          if (primaryLinks.has(key) || primaryLinks.has(keyRev)) {
-            stroke = '#059669' // primary active color
-            width = 5
-          } else {
-            stroke = '#f59e0b' // backup used
-            width = 5
-          }
-        }
-        return <line key={i} x1={s.x} y1={s.y} x2={t.x} y2={t.y} stroke={stroke} strokeWidth={width} strokeLinecap="round" />
-      })}
+    <div className="rounded-md border border-slate-700 bg-slate-800 p-4">
+      <div className="mb-2 text-sm text-slate-300">
+        Monitored Flow: {routes.monitoredFlow.from} to {routes.monitoredFlow.to}
+      </div>
+      <svg width="100%" viewBox="0 0 580 300" className="h-[280px] w-full">
+        {links.map((link) => {
+          const source = positions[link.source]
+          const target = positions[link.target]
+          const key = toLinkKey(link.source, link.target)
+          const isCurrent = routeKeys.has(key)
+          const isPrimary = primaryKeys.has(key)
+          let stroke = link.active ? '#334155' : '#7f1d1d'
+          if (isCurrent && isPrimary) stroke = '#10b981'
+          if (isCurrent && !isPrimary) stroke = '#f59e0b'
+          return (
+            <line
+              key={key}
+              x1={source.x}
+              y1={source.y}
+              x2={target.x}
+              y2={target.y}
+              stroke={stroke}
+              strokeWidth={isCurrent ? 6 : 4}
+              strokeLinecap="round"
+            />
+          )
+        })}
 
-      {/* nodes */}
-      {nodes.map((n) => {
-        const p = positions[n.id] || { x: 10, y: 10 }
-        const fill = n.status === 'active' ? '#10B981' : '#EF4444'
-        return (
-          <g key={n.id}>
-            <circle cx={p.x} cy={p.y} r={24} fill={fill} stroke="#111827" strokeWidth={2}></circle>
-            <text x={p.x} y={p.y + 40} fontSize={12} textAnchor="middle" fill="#374151">
-              {n.label}
-            </text>
-            <text x={p.x} y={p.y + 56} fontSize={11} textAnchor="middle" fill="#6B7280">
-              ({n.id})
-            </text>
-          </g>
-        )
-      })}
-    </svg>
+        {nodes.map((node) => {
+          const point = positions[node.id]
+          const fill = node.status === 'active' ? '#059669' : '#dc2626'
+          return (
+            <g key={node.id}>
+              <circle cx={point.x} cy={point.y} r={26} fill={fill} stroke="#0f172a" strokeWidth={3} />
+              <text x={point.x} y={point.y + 5} textAnchor="middle" fill="#e2e8f0" fontSize={14} fontWeight={700}>
+                {node.id}
+              </text>
+              <text x={point.x} y={point.y + 42} textAnchor="middle" fill="#94a3b8" fontSize={12}>
+                {node.role}
+              </text>
+            </g>
+          )
+        })}
+      </svg>
+
+      <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-slate-300">
+        <span className="flex items-center gap-2">
+          <span className="h-2.5 w-5 rounded bg-emerald-500" />
+          Primary Path
+        </span>
+        <span className="flex items-center gap-2">
+          <span className="h-2.5 w-5 rounded bg-amber-500" />
+          Backup Path
+        </span>
+        <span className="flex items-center gap-2">
+          <span className="h-2.5 w-5 rounded bg-red-700" />
+          Failed Link
+        </span>
+      </div>
+    </div>
   )
 }
-
