@@ -4,11 +4,12 @@ import axios from 'axios'
 import Dashboard from './pages/Dashboard'
 import Home from './pages/Home'
 import Logs from './pages/Logs'
+import ProjectInfo from './pages/ProjectInfo'
 import type { NetworkState } from './types/simulator'
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:5000'
 
-type PageTab = 'home' | 'dashboard' | 'logs'
+type PageTab = 'home' | 'dashboard' | 'explain' | 'logs'
 
 function createEmptyState(): NetworkState {
   return {
@@ -28,6 +29,21 @@ function createEmptyState(): NetworkState {
     alerts: [],
     logs: [],
     history: [],
+    scenario: {
+      alarmSuppressed: false,
+      falseDataActive: false,
+      dosActive: false,
+    },
+    safety: {
+      level: 'normal',
+      violations: [],
+      thresholdsMet: true,
+    },
+    thresholds: {
+      minReliability: 99,
+      maxDelayMs: 150,
+      maxPacketLossPercent: 1,
+    },
   }
 }
 
@@ -86,6 +102,14 @@ export default function App() {
               Dashboard
             </button>
             <button
+              onClick={() => setPage('explain')}
+              className={`rounded px-3 py-1.5 text-sm ${
+                page === 'explain' ? 'bg-emerald-600' : 'bg-slate-700 hover:bg-slate-600'
+              }`}
+            >
+              Explain
+            </button>
+            <button
               onClick={() => setPage('logs')}
               className={`rounded px-3 py-1.5 text-sm ${page === 'logs' ? 'bg-emerald-600' : 'bg-slate-700 hover:bg-slate-600'}`}
             >
@@ -106,9 +130,13 @@ export default function App() {
             state={state}
             onFail={(nodeId) => postAction('/simulate/failure', { nodeId })}
             onRestore={(nodeId) => postAction('/simulate/restore', { nodeId })}
+            onFailLink={(source, target) => postAction('/simulate/link-failure', { source, target })}
+            onRestoreLink={(source, target) => postAction('/simulate/link-restore', { source, target })}
+            onScenario={(event, payload) => postAction('/api/simulate', { event, ...payload })}
             onReset={() => postAction('/reset')}
           />
         ) : null}
+        {!loading && page === 'explain' ? <ProjectInfo state={state} /> : null}
         {!loading && page === 'logs' ? <Logs logs={state.logs} /> : null}
       </div>
     </main>

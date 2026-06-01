@@ -12,6 +12,12 @@ from network import NetworkState
 
 
 class Simulator:
+    SAFETY_THRESHOLDS = {
+        "minReliability": 99.0,
+        "maxDelayMs": 150.0,
+        "maxPacketLossPercent": 1.0,
+    }
+
     def __init__(self, network: NetworkState, tick_interval: float = 1.0) -> None:
         self.network = network
         self.tick_interval = tick_interval
@@ -254,6 +260,8 @@ class Simulator:
                     "falseDataActive": self.false_data_active,
                     "dosActive": self.dos_ticks_remaining > 0,
                 },
+                "safety": self._safety_status(),
+                "thresholds": dict(self.SAFETY_THRESHOLDS),
                 "alerts": list(self.alerts),
                 "logs": list(self.logs),
                 "history": list(self.history),
@@ -343,16 +351,52 @@ class Simulator:
         failed = force_failure or not path
         if failed:
             self.esd_failures += 1
+            self.metrics["esdFailures"] = self.esd_failures
             self.metrics["packetsSent"] += 1
             self.metrics["packetsLost"] += 1
             self._create_alert("critical", "ESD command failed to reach Control Room E")
             self._log_event("Safety Scenario: emergency shutdown command delivery failed")
             return
         self.esd_successes += 1
+        self.metrics["esdSuccesses"] = self.esd_successes
         self.metrics["packetsSent"] += 1
         self.metrics["packetsReceived"] += 1
         self._create_alert("success", "ESD command delivered on active route")
         self._log_event(f"Safety Scenario: ESD command delivered through {' -> '.join(path)}")
+
+    def _safety_status(self) -> Dict[str, Any]:
+        reliability = float(self.metrics["reliability"])
+        delay = float(self.metrics["delayMs"])
+        packet_loss = float(self.metrics["packetLossPercent"])
+        violations = []
+
+        if reliability < self.SAFETY_THRESHOLDS["minReliability"]:
+            violations.append("Reliability below safety threshold")
+        if delay > self.SAFETY_THRESHOLDS["maxDelayMs"]:
+            violations.append("Communication delay above safety threshold")
+        if packet_loss > self.SAFETY_THRESHOLDS["maxPacketLossPercent"]:
+            violations.append("Packet loss above safety threshold")
+        if self.esd_failures > 0:
+            violations.append("Emergency shutdown delivery failure recorded")
+        if self.alarm_suppressed:
+            violations.append("Alarm channel is suppressed")
+        if self.false_data_active:
+            violations.append("False sensor data scenario is active")
+        if self.dos_ticks_remaining > 0:
+            violations.append("DoS traffic scenario is active")
+
+        if any("Emergency shutdown" in violation for violation in violations):
+            level = "critical"
+        elif violations:
+            level = "degraded"
+        else:
+            level = "normal"
+
+        return {
+            "level": level,
+            "violations": violations,
+            "thresholdsMet": len(violations) == 0,
+        }
 
     def _update_sensor_reading(self) -> None:
         sensor = self.network.nodes.get("A")

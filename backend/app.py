@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import atexit
+import os
 
 from flask import Flask
 from flask_cors import CORS
@@ -30,4 +31,5 @@ app = create_app()
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    debug_enabled = os.getenv("FLASK_DEBUG", "0") == "1"
+    app.run(host="0.0.0.0", port=5000, debug=debug_enabled, use_reloader=False)

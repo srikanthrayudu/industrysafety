@@ -1,7 +1,7 @@
 """Network topology model for the reliability monitoring simulator."""
 
 from dataclasses import dataclass
-from collections import deque
+import heapq
 from typing import Dict, List
 
 
@@ -26,6 +26,7 @@ class Link:
     active: bool = True
     latency_ms: int = 30
     loss_rate: float = 0.002
+    protocol: str = "Industrial Ethernet"
 
 
 class NetworkState:
@@ -38,12 +39,12 @@ class NetworkState:
             "E": Node(id="E", label="Control Room E", role="SCADA"),
         }
         self.links: List[Link] = [
-            Link("A", "B", latency_ms=22, loss_rate=0.001),
-            Link("B", "C", latency_ms=28, loss_rate=0.002),
-            Link("C", "E", latency_ms=35, loss_rate=0.002),
-            Link("A", "D", latency_ms=38, loss_rate=0.004),
-            Link("D", "C", latency_ms=42, loss_rate=0.004),
-            Link("D", "E", latency_ms=48, loss_rate=0.005),
+            Link("A", "B", latency_ms=22, loss_rate=0.001, protocol="Modbus TCP"),
+            Link("B", "C", latency_ms=28, loss_rate=0.002, protocol="Profinet"),
+            Link("C", "E", latency_ms=35, loss_rate=0.002, protocol="OPC UA"),
+            Link("A", "D", latency_ms=38, loss_rate=0.004, protocol="MQTT"),
+            Link("D", "C", latency_ms=42, loss_rate=0.004, protocol="Industrial Ethernet"),
+            Link("D", "E", latency_ms=48, loss_rate=0.005, protocol="OPC UA"),
         ]
 
     def get_nodes(self) -> List[Dict[str, str | int | float | None]]:
@@ -144,19 +145,23 @@ class NetworkState:
         if src == dst:
             return [src]
 
-        adjacency: Dict[str, List[str]] = {node_id: [] for node_id in self.nodes}
+        adjacency: Dict[str, List[tuple[str, float]]] = {node_id: [] for node_id in self.nodes}
         for link in self.links:
             if not link.active:
                 continue
             if self.nodes[link.source].status != "active" or self.nodes[link.target].status != "active":
                 continue
-            adjacency[link.source].append(link.target)
-            adjacency[link.target].append(link.source)
+            weight = float(link.latency_ms) + (link.loss_rate * 1000.0)
+            adjacency[link.source].append((link.target, weight))
+            adjacency[link.target].append((link.source, weight))
 
-        queue = deque([src])
+        queue: list[tuple[float, str]] = [(0.0, src)]
         parent: Dict[str, str | None] = {src: None}
+        best_cost: Dict[str, float] = {src: 0.0}
         while queue:
-            current = queue.popleft()
+            cost, current = heapq.heappop(queue)
+            if cost > best_cost[current]:
+                continue
             if current == dst:
                 path = []
                 probe: str | None = dst
@@ -164,10 +169,12 @@ class NetworkState:
                     path.append(probe)
                     probe = parent[probe]
                 return list(reversed(path))
-            for neighbor in adjacency[current]:
-                if neighbor not in parent:
+            for neighbor, edge_weight in adjacency[current]:
+                new_cost = cost + edge_weight
+                if new_cost < best_cost.get(neighbor, float("inf")):
+                    best_cost[neighbor] = new_cost
                     parent[neighbor] = current
-                    queue.append(neighbor)
+                    heapq.heappush(queue, (new_cost, neighbor))
         return []
 
     def is_connected(self, src: str, dst: str) -> bool:

@@ -5,12 +5,22 @@ export type NetworkNode = {
   label: string
   role: string
   status: NodeStatus
+  reading?: number | null
+  unit?: string
+  fail_count?: number
+  repair_count?: number
+  uptime_seconds?: number
+  downtime_seconds?: number
 }
 
 export type NetworkLink = {
+  id?: string
   source: string
   target: string
   active: boolean
+  latency_ms?: number
+  loss_rate?: number
+  protocol?: string
 }
 
 export type Metrics = {
@@ -20,6 +30,12 @@ export type Metrics = {
   packetLossPercent: number
   reliability: number
   delayMs: number
+  throughputPps?: number
+  uptimeSeconds?: number
+  mtbfSec?: number
+  mttrSec?: number
+  esdSuccesses?: number
+  esdFailures?: number
   activeNodes: number
   failedNodes: number
 }
@@ -40,6 +56,7 @@ export type HistoryEntry = {
   reliability: number
   packetLossPercent: number
   delayMs: number
+  throughputPps?: number
 }
 
 export type RouteInfo = {
@@ -49,11 +66,32 @@ export type RouteInfo = {
   backupActive: boolean
 }
 
+export type ScenarioState = {
+  alarmSuppressed: boolean
+  falseDataActive: boolean
+  dosActive: boolean
+}
+
+export type SafetyStatus = {
+  level: 'normal' | 'degraded' | 'critical'
+  violations: string[]
+  thresholdsMet: boolean
+}
+
+export type SafetyThresholds = {
+  minReliability: number
+  maxDelayMs: number
+  maxPacketLossPercent: number
+}
+
 export type NetworkState = {
   nodes: NetworkNode[]
   links: NetworkLink[]
   metrics: Metrics
   routes: RouteInfo
+  scenario?: ScenarioState
+  safety?: SafetyStatus
+  thresholds?: SafetyThresholds
   alerts: Alert[]
   logs: LogEntry[]
   history: HistoryEntry[]
